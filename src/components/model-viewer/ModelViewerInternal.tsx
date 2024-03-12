@@ -35,6 +35,7 @@ import plusIcon from "@assets/button_plus.png";
 import minusIcon from "@assets/button_minus.png";
 import resetIcon from "@assets/button_reset.png";
 import Image from "next/image";
+import { formatError } from "./formatError.ts";
 
 const DEBUG = false;
 
@@ -377,7 +378,7 @@ function ModelViewerInternal({
   inWorldAnnotations,
   overlayAnnotations,
 }: ModelViewerProps) {
-  const [error, setError] = useState();
+  const [error, setError] = useState<unknown | undefined>();
   const [initialized, setInitialized] = useState(false);
   const [tooltipObject, setTooltipObject] = useState<ReactNode | undefined>();
   const mousePos = useRef<Vector2 | null>(null);
@@ -481,50 +482,56 @@ function ModelViewerInternal({
   }
 
   return (
-    <div
-      className={css.wrapper + " " + (!initialized ? css.loading : "")}
-      style={{
-        background,
-        "--modelviewer-width": guiScaledDimension(width),
-        "--modelviewer-height": guiScaledDimension(height),
-        "--modelviewer-aspect-ratio": width / height,
-      }}
-    >
-      {error && <ErrorText>{String(error)}</ErrorText>}
-      <MinecraftTooltip
-        content={tooltipObject}
-        visible={Boolean(tooltipObject)}
+    <>
+      {error ? (
+        <div>
+          <ErrorText>Failed to load 3D scene: {formatError(error)}</ErrorText>
+        </div>
+      ) : null}
+      <div
+        className={css.wrapper + " " + (!initialized ? css.loading : "")}
+        style={{
+          background,
+          "--modelviewer-width": guiScaledDimension(width),
+          "--modelviewer-height": guiScaledDimension(height),
+          "--modelviewer-aspect-ratio": width / height,
+        }}
       >
-        <div
-          className={css.root}
-          onMouseMove={onMouseMove}
-          onMouseLeave={onMouseLeave}
+        <MinecraftTooltip
+          content={tooltipObject}
+          visible={Boolean(tooltipObject)}
         >
-          {!initialized && <img src={placeholder} alt="" />}
+          <div
+            className={css.root}
+            onMouseMove={onMouseMove}
+            onMouseLeave={onMouseLeave}
+          >
+            {!initialized && <img src={placeholder} alt="" />}
 
-          <div className={css.viewport} ref={viewportRef}></div>
-        </div>
-      </MinecraftTooltip>
-      {interactive && (
-        <div className={css.controls}>
-          <MinecraftTooltip content={"Zoom in"}>
-            <button onClick={zoomIn}>
-              <Image src={plusIcon} alt="" />
-            </button>
-          </MinecraftTooltip>
-          <MinecraftTooltip content={"Zoom out"}>
-            <button onClick={zoomOut}>
-              <Image src={minusIcon} alt="" />
-            </button>
-          </MinecraftTooltip>
-          <MinecraftTooltip content={"Reset view"}>
-            <button onClick={resetView}>
-              <Image src={resetIcon} alt="" />
-            </button>
-          </MinecraftTooltip>
-        </div>
-      )}
-    </div>
+            <div className={css.viewport} ref={viewportRef}></div>
+          </div>
+        </MinecraftTooltip>
+        {interactive && (
+          <div className={css.controls}>
+            <MinecraftTooltip content={"Zoom in"}>
+              <button onClick={zoomIn}>
+                <Image src={plusIcon} alt="" />
+              </button>
+            </MinecraftTooltip>
+            <MinecraftTooltip content={"Zoom out"}>
+              <button onClick={zoomOut}>
+                <Image src={minusIcon} alt="" />
+              </button>
+            </MinecraftTooltip>
+            <MinecraftTooltip content={"Reset view"}>
+              <button onClick={resetView}>
+                <Image src={resetIcon} alt="" />
+              </button>
+            </MinecraftTooltip>
+          </div>
+        )}
+      </div>
+    </>
   );
 }
 
