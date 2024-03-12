@@ -1,6 +1,6 @@
 import { join as joinPath } from "node:path";
 import { readFile, stat } from "node:fs/promises";
-import { Guide } from "./Guide.ts";
+import { Guide, GuideIndex } from "./Guide.ts";
 import { getGuideVersionBySlug } from "./GuideVersionIndex.ts";
 
 type CachedGuide = {
@@ -25,7 +25,12 @@ export async function getGuide(versionSlug: string): Promise<Guide> {
     return cachedData.guide;
   }
 
-  const guideData = JSON.parse(await readFile(dataPath, { encoding: "utf-8" }));
+  const guideData: GuideIndex = JSON.parse(
+    await readFile(dataPath, { encoding: "utf-8" }),
+  );
+
+  // Fix up older versions. Introduced in late 1.20.4
+  guideData.defaultConfigValues ??= {};
 
   const guide = new Guide(
     versionInfo.baseUrl,

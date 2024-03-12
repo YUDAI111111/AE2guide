@@ -168,6 +168,8 @@ export type GuideIndex = {
   pageIndices: Record<string, Array<any>>;
 
   animations: Record<string, AnimationInfo>;
+
+  defaultConfigValues: Record<string, string>;
 };
 
 export type NavigationNode = {

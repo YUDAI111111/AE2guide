@@ -17,6 +17,7 @@ import { getAttributes } from "./mdxUtils.ts";
 import CategoryIndex from "@component/guide-elements/CategoryIndex";
 import { CustomGuideElementProps } from "@component/CustomGuideElementProps.ts";
 import SubPages from "@component/guide-elements/SubPages.tsx";
+import AE2ConfigValue from "@component/guide-elements/AE2ConfigValue.tsx";
 
 type CustomElementCompiler = (
   context: CompileContext,
@@ -40,6 +41,7 @@ const components: Record<string, CustomGuideComponent> = {
   RecipeFor,
   Row,
   SubPages,
+  "ae2:ConfigValue": AE2ConfigValue,
 };
 
 const customCompilers: Record<string, CustomElementCompiler> = {
