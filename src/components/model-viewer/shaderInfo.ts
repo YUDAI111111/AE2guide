@@ -17,6 +17,11 @@ export type ShaderProps = {
 };
 
 // Properties from Shaders found in MC
+// For "lighting", check if the vertex-shader samples the lightmap (i.e. via minecraft_sample_lightmap)
+// vertexColor should be true if the shader uses vertex-specific color (and i.e. maintains it even after sampling
+// the lightmap)
+// "textured" indicates that the fragment shader samples the texture and uses its color
+// "alphaTest" indicates the alpha value under which the fragment is discarded
 const shaderInfos: Record<string, ShaderProps> = {
   rendertype_solid: {
     lighting: "lightmap",
@@ -39,6 +44,12 @@ const shaderInfos: Record<string, ShaderProps> = {
   rendertype_translucent: {
     lighting: "lightmap",
     alphaTest: null,
+    vertexColor: true,
+    textured: true,
+  },
+  rendertype_tripwire: {
+    lighting: "lightmap",
+    alphaTest: 0.1,
     vertexColor: true,
     textured: true,
   },
