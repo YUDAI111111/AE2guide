@@ -53,6 +53,12 @@ const shaderInfos: Record<string, ShaderProps> = {
     vertexColor: true,
     textured: true,
   },
+  rendertype_entity_solid: {
+    lighting: "diffuse",
+    alphaTest: null,
+    vertexColor: true,
+    textured: true,
+  },
   rendertype_entity_cutout: {
     lighting: "diffuse",
     alphaTest: 0.1,
