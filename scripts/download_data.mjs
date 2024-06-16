@@ -1,95 +1,63 @@
-import { fileURLToPath } from "node:url";
-import { mkdir, writeFile } from "node:fs/promises";
-import { gunzipSync } from "node:zlib";
-import * as path from "node:path";
+export default {
+  async scheduled(event, env, ctx) {
+    const bucket = env.GUIDE_ASSETS;
+    const listOptions = {
+      prefix: "",
+      delimiter: "/",
+    };
 
-const dataFolder = fileURLToPath(import.meta.resolve("../data"));
-await mkdir(dataFolder, { recursive: true });
+    const versions = [];
+    async function processPrefixes(delimitedPrefixes) {
+      for (const prefix of delimitedPrefixes) {
+        const devVersion = prefix === "development/";
 
-const baseUrl = "https://guide-assets.appliedenergistics.org/";
+        if (!prefix.match(/^minecraft-([^/]+)\/$/) && !devVersion) {
+          continue;
+        }
+        const indexFile = prefix + "index.json";
 
-function describeVersion(versionFromIndex) {
-  if (versionFromIndex.development) {
-    return versionFromIndex.gameVersion + " [DEV]";
-  } else {
-    return versionFromIndex.gameVersion;
-  }
-}
+        const indexResponse = await bucket.get(indexFile);
+        if (!indexResponse) {
+          console.warn("Index-File %s does not exist.", indexFile);
+          continue;
+        }
 
-async function fetchJson(url) {
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Failed request for ${url}: ${response}`);
-  }
-  return await response.json();
-}
+        try {
+          const versionIndexContent = await indexResponse.json();
+          console.info("Content of %s: %o", indexFile, versionIndexContent);
+          versions.push({
+            format: versionIndexContent.format,
+            generated: versionIndexContent.generated,
+            gameVersion: versionIndexContent.gameVersion,
+            modVersion: versionIndexContent.modVersion,
+            // This is where the actual data lives in V1 guides
+            url: "https://guide-assets.appliedenergistics.org/" + indexFile,
+            development: devVersion,
+          });
+        } catch (e) {
+          console.error("Failed to process index file %s", indexFile);
+        }
+      }
+    }
 
-const versionIndex = await fetchJson(`${baseUrl}index.json`);
+    // List directories in root
+    let response = await bucket.list(listOptions);
+    await processPrefixes(response.delimitedPrefixes);
+    while (response.truncated) {
+      response = await bucket.list({ ...listOptions, cursor: response.cursor });
+      await processPrefixes(response.delimitedPrefixes);
+    }
 
-// For dev purposes:
-// versionIndex.versions = versionIndex.versions.slice(0, 1);
-
-async function downloadVersion(versionInfo) {
-  const { url, development } = versionInfo;
-
-  console.log("Downloading %s", url);
-  const versionDetails = await fetchJson(url);
-  const { format, generated, modVersion, gameVersion, guideDataPath } =
-    versionDetails;
-
-  const versionSlug = development ? "development" : gameVersion;
-
-  const guideDataUrl = new URL(guideDataPath, url);
-  console.info("Downloading %s", guideDataUrl);
-  const guideDataResponse = await fetch(guideDataUrl);
-  if (!guideDataResponse.ok) {
-    throw guideDataResponse;
-  }
-
-  // Apply GZIP decompression
-  const unzippedGuideData = gunzipSync(await guideDataResponse.arrayBuffer());
-  const dataFilename = "data_" + versionSlug + ".json";
-  await writeFile(path.join(dataFolder, dataFilename), unzippedGuideData);
-
-  // Extract all pages:
-  const guideData = JSON.parse(unzippedGuideData.toString());
-
-  // URL which assets are relative to
-  const baseUrl = new URL(".", guideDataUrl);
-
-  // Return entry for version index, see Typescript Type GuideVersion
-  return {
-    baseUrl,
-    format,
-    gameVersion,
-    modVersion,
-    generated,
-    development,
-    slug: versionSlug,
-    dataFilename,
-    defaultNamespace: guideData.defaultNamespace,
-  };
-}
-
-const results = await Promise.allSettled(
-  versionIndex.versions.map(downloadVersion),
-);
-const downloadedVersions = [];
-
-for (let i = 0; i < results.length; i++) {
-  const result = results[i];
-  const version = describeVersion(versionIndex.versions[i]);
-  if (result.status === "fulfilled") {
-    console.info("[SUCCESS] Minecraft %s", version);
-    downloadedVersions.push(result.value);
-  } else {
-    console.group("[ERROR] Minecraft %s", version);
-    console.log("%o", result.reason);
-    console.groupEnd();
-  }
-}
-
-await writeFile(
-  path.join(dataFolder, "index.json"),
-  JSON.stringify(downloadedVersions, null, 2),
-);
+    const indexJsonContent = JSON.stringify({
+      versions,
+    });
+    console.info("Overall version info: %s", indexJsonContent);
+    bucket.put("index.json", indexJsonContent, {
+      httpMetadata: {
+        contentType: "application/json",
+        // Allow browser to assume for 15m that the response is fresh
+        cacheControl: "public, max-age=900",
+      },
+    });
+  },
+};
