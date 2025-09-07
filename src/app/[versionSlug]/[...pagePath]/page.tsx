@@ -7,9 +7,9 @@ import {
 import { compilePage } from "@component/page-compiler/compilePage";
 import { Metadata } from "next";
 import GuidePageTitle from "@component/nav/GuidePageTitle.tsx";
-import { ReactElement } from "react"; // Return a list of `params` to populate the [slug] dynamic segment
+import { ReactElement } from "react";
 import { redirect } from "next/navigation";
-import { Guide, NavigationNode } from "../../../build-data/Guide.ts"; // Entry-point for the entire version Slug
+import { Guide, NavigationNode } from "../../../build-data/Guide.ts";
 
 // Entry-point for the entire version Slug
 function isIndexPage(pagePath: string[]) {

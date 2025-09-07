@@ -163,8 +163,6 @@ export type GuideIndex = {
 
   recipes: Record<string, TaggedRecipe>;
 
-  coloredVersions: Record<string, Record<DyeColor, string>>;
-
   pageIndices: Record<string, Array<any>>;
 
   animations: Record<string, AnimationInfo>;
@@ -187,8 +185,6 @@ export type CategoryIndex = Map<string, string[]>;
 
 export class Guide {
   readonly baseUrl: string;
-
-  readonly coloredVersionItemIds = new Set<string>();
 
   readonly pageByItemIndex: ItemIndex;
 
@@ -220,13 +216,6 @@ export class Guide {
         } else {
           this.recipesForItems.set(recipe.resultItem, [recipe]);
         }
-      }
-    }
-
-    // Find all item ids of items that are just colored versions of something else.
-    for (const [, variants] of Object.entries(index.coloredVersions)) {
-      for (const coloredItemId of Object.values(variants)) {
-        this.coloredVersionItemIds.add(coloredItemId);
       }
     }
 
@@ -302,13 +291,6 @@ export class Guide {
 
     // if it contains a ":" it's assumed to be absolute
     return idText;
-  }
-
-  /**
-   * Test if an item id is a colored version of something else.
-   */
-  isColoredVariant(itemId: string) {
-    return this.coloredVersionItemIds.has(itemId);
   }
 
   getItemInfo(itemId: string): ItemInfo {

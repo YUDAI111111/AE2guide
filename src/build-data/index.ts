@@ -32,20 +32,25 @@ export async function getGuide(versionSlug: string): Promise<Guide> {
   // Fix up older versions. Introduced in late 1.20.4
   guideData.defaultConfigValues ??= {};
 
-  const guide = new Guide(
-    versionInfo.baseUrl,
-    versionSlug,
-    versionInfo.gameVersion,
-    versionInfo.modVersion,
-    guideData,
-  );
+  try {
+      const guide = new Guide(
+          versionInfo.baseUrl,
+          versionSlug,
+          versionInfo.gameVersion,
+          versionInfo.modVersion,
+          guideData,
+      );
 
-  cachedGuideData.set(versionSlug, {
-    lastModified,
-    guide,
-  });
+      cachedGuideData.set(versionSlug, {
+          lastModified,
+          guide,
+      });
 
-  return guide;
+      return guide;
+  } catch (e) {
+      console.error("Failed to parse guide %s", dataPath);
+      throw e;
+  }
 }
 
 export function getPagePath(guide: Guide, pageId: string): string {
