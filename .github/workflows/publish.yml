@@ -1,54 +1,92 @@
 name: Publish
 
 on:
-  # Runs on pushes targeting the default branch
   push:
     branches:
       - main
-
-  # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
-
-  # Update the guide twice daily
   schedule:
     - cron: "30 3,15 * * *"
 
-# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
   contents: read
   pages: write
   id-token: write
 
-# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
-# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
 concurrency:
   group: "pages"
   cancel-in-progress: false
 
 jobs:
-  # Build job
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "20"
           cache: npm
+
       - name: Install dependencies
         run: npm ci
-      - name: Download Assets
+
+      # 既存のデータ取得（これが成功すればそれを使う）
+      - name: Download Assets (primary)
         run: node scripts/download_data.mjs
+
+      # ここが肝：data_development.json が無い/空/壊れている場合にフォールバックで補完する
+      - name: Ensure data_development.json (fallback if needed)
+        run: |
+          set -euxo pipefail
+
+          # まず現状確認
+          echo "== BEFORE =="
+          ls -la || true
+          if [ -f data_development.json ]; then
+            wc -c data_development.json || true
+          else
+            echo "data_development.json is missing (before fallback)"
+          fi
+
+          NEED_FALLBACK=0
+          if [ ! -f data_development.json ]; then
+            NEED_FALLBACK=1
+          elif [ ! -s data_development.json ]; then
+            NEED_FALLBACK=1
+          else
+            # JSONとして読めるか（壊れてたら fallback）
+            node -e "JSON.parse(require('fs').readFileSync('data_development.json','utf8'))" || NEED_FALLBACK=1
+          fi
+
+          if [ "$NEED_FALLBACK" -eq 1 ]; then
+            echo "== FALLBACK: downloading guide-assets.zip =="
+            curl -L -o guide-assets.zip "https://sourceforge.net/projects/applied-energistics-2.mirror/files/forge_v15.4.10/guide-assets.zip/download"
+            unzip -o guide-assets.zip
+
+            # どこに入っていても拾って、ビルドが探す「リポジトリ直下」にコピー
+            FOUND="$(find . -name data_development.json -print -quit || true)"
+            if [ -z "$FOUND" ]; then
+              echo "FATAL: data_development.json not found in extracted assets."
+              exit 1
+            fi
+            cp "$FOUND" data_development.json
+          fi
+
+          echo "== AFTER =="
+          test -s data_development.json
+          node -e "JSON.parse(require('fs').readFileSync('data_development.json','utf8')); console.log('data_development.json OK')"
+
       - name: Build
         run: npm run build
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./out
 
-  # Deployment job
   deploy:
     environment:
       name: github-pages
